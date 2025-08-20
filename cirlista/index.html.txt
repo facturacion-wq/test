@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lista Mayorista · Carnicerías Integradas de Rosario</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --price-col: 11ch;          /* ancho fijo de la columna del precio (alineado) */
+    --gap: .45rem;              /* espacio producto–precio (subí/bajá a gusto) */
+    --fs-prod:  clamp(16px, 4.2vw, 19px);   /* tamaño producto responsive */
+    --fs-price: clamp(17px, 4.6vw, 21px);   /* tamaño precio responsive  */
+    --row-py:   clamp(.55rem, 1.8vw, .8rem);/* padding vertical de fila   */
+  }
+  body{ font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f6f7fb; }
+  .brand-hero{
+    background: radial-gradient(1200px 300px at 50% -20%, #1c2434, #0f172a);
+    color:#fff; padding: .85rem 0 1rem; margin-bottom: .5rem;
+  }
+  .card-list{ border-radius: 1rem; overflow: hidden; border:1px solid #e6e8ef; background:#fff; }
+  /* Fila: grid 1fr + precio fijo */
+  .row-price{
+    display:grid; grid-template-columns: minmax(0,1fr) var(--price-col);
+    column-gap: var(--gap); align-items: baseline;
+    padding: var(--row-py) .75rem; border-bottom:1px solid #eff1f6;
+  }
+  .row-price .prod{
+    font-size: var(--fs-prod); font-weight:600; color:#0f172a;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+  }
+  .row-price .price{
+    font-size: var(--fs-price); font-weight:800; color:#0b132a;
+    text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums;
+  }
+  .section-h{ position: sticky; top: 0; z-index: 5; }
+  .section-bar{
+    background:#fff; border:1px solid #e6e8ef; border-radius: 999px;
+    padding:.35rem .75rem; font-weight:800; color:#374151; display:flex; justify-content:space-between; align-items:center;
+    margin: .6rem .15rem;
+  }
+  .controls .form-control, .controls .form-select{
+    border-radius: .8rem; font-size: 15px;
+  }
+  @media (min-width: 992px){
+    :root{ --price-col: 10.5ch; --gap: .5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="brand-hero">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <img src="https://i.ibb.co/DPQM8x6c/CIR-carnicerias-integradas-rosario-removebg-preview.png" alt="CIR" style="height:40px">
+        <div>
+          <h1 class="h5 fw-800 m-0">Carnicerías Integradas de Rosario</h1>
+          <small class="text-white-50">Lista mayorista · Vista compacta</small>
+        </div>
+      </div>
+      <button class="btn btn-light btn-sm" id="btnPrint">PDF</button>
+    </div>
+
+    <div class="row g-2 mt-3 controls">
+      <div class="col-12 col-lg-6">
+        <input id="q" class="form-control" placeholder="Buscar producto…">
+      </div>
+      <div class="col-6 col-lg-3">
+        <select id="filterCat" class="form-select">
+          <option value="Todos">Ver: Todas las categorías</option>
+        </select>
+      </div>
+      <div class="col-6 col-lg-3">
+        <select id="sort" class="form-select">
+          <option value="alpha">Orden: Alfabético</option>
+          <option value="priceAsc">Precio: menor a mayor</option>
+          <option value="priceDesc">Precio: mayor a menor</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container pb-5">
+  <div id="meta" class="text-secondary small mb-2"></div>
+  <div id="list" class="card-list"></div>
+</main>
+
+<script>
+const API_URL = 'https://script.google.com/a/macros/rosariocarnes.com.ar/s/AKfycbwISgx9ZdOh4vtmZIe9na12en_rT_cpgQg_Y9EAd45poY6Nh0S5itfC60VIlvzDZkgKpg/exec'; // <- cambia esto
+
+const state = { items: [], q:'', cat:'Todos', sort:'alpha', updatedAt:null };
+
+const fmtARS = new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:2 });
+
+function groupByCat(arr){
+  const g = {};
+  for(const r of arr){ (g[r.categoria]??=[]).push(r); }
+  return g;
+}
+function apply(){
+  const q = state.q.trim().toLowerCase();
+  let rows = state.items.filter(r => (state.cat==='Todos'||r.categoria===state.cat) && (!q || r.producto.toLowerCase().includes(q)));
+  switch(state.sort){
+    case 'priceAsc': rows.sort((a,b)=>a.precio-b.precio); break;
+    case 'priceDesc': rows.sort((a,b)=>b.precio-a.precio); break;
+    default: rows.sort((a,b)=>a.producto.localeCompare(b.producto,'es')); break;
+  }
+  render(rows);
+}
+function section(title){
+  return `
+    <div class="section-h">
+      <div class="section-bar"><span>${title}</span><a href="#top" class="text-decoration-none small">↑ Subir</a></div>
+    </div>`;
+}
+function row(r){
+  return `
+    <div class="row-price">
+      <div class="prod">${r.producto}</div>
+      <div class="price">${fmtARS.format(r.precio)}</div>
+    </div>`;
+}
+function render(rows){
+  const list = document.getElementById('list'); list.innerHTML = '';
+  const grouped = groupByCat(rows);
+  const order = ['CARNE','CERDO','POLLO','ELABORADOS'].concat(Object.keys(grouped).filter(c=>!['CARNE','CERDO','POLLO','ELABORADOS'].includes(c)));
+  for(const c of order){
+    const items = grouped[c]||[]; if(!items.length) continue;
+    list.insertAdjacentHTML('beforeend', section(c));
+    const html = items.map(row).join('');
+    list.insertAdjacentHTML('beforeend', html);
+  }
+  document.getElementById('meta').textContent =
+    `${rows.length} producto${rows.length!==1?'s':''} · Actualizado: ${state.updatedAt? new Date(state.updatedAt).toLocaleString('es-AR') : '—'}`;
+}
+function fillFilters(){
+  const sel = document.getElementById('filterCat');
+  const cats = [...new Set(state.items.map(i=>i.categoria))];
+  sel.innerHTML = '<option value="Todos">Ver: Todas las categorías</option>' +
+                  cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+async function load(){
+  const res = await fetch(API_URL, { cache:'no-store' });
+  const data = await res.json();
+  state.items = data.items||[]; state.updatedAt = data.updatedAt||null;
+  fillFilters(); apply();
+}
+document.getElementById('q').addEventListener('input', e => { state.q = e.target.value; apply(); });
+document.getElementById('filterCat').addEventListener('change', e => { state.cat = e.target.value; apply(); });
+document.getElementById('sort').addEventListener('change', e => { state.sort = e.target.value; apply(); });
+document.getElementById('btnPrint').addEventListener('click', ()=> window.print());
+
+load();
+</script>
+</body>
+</html>

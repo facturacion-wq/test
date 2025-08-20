@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/precios",
+      "destination": "https://script.google.com/a/macros/rosariocarnes.com.ar/s/AKfycbwISgx9ZdOh4vtmZIe9na12en_rT_cpgQg_Y9EAd45poY6Nh0S5itfC60VIlvzDZkgKpg/exec"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300" }
+      ]
+    }
+  ]
+}
